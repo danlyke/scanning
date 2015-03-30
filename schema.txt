@@ -1,0 +1,48 @@
+
+
+CREATE FUNCTION entered_stamp () RETURNS TRIGGER AS
+'    BEGIN
+        IF NEW.entered ISNULL THEN
+	        NEW.entered := ''now'';
+	END IF;
+	IF NEW.updated ISNULL THEN
+		NEW.updated := ''now'';
+	END IF;
+        RETURN NEW;
+    END;
+'LANGUAGE 'plpgsql';
+
+CREATE FUNCTION updated_stamp () RETURNS TRIGGER AS
+'    BEGIN
+	IF NEW.updated ISNULL THEN
+		NEW.updated := ''now'';
+	END IF;
+        RETURN NEW;
+    END;
+' LANGUAGE 'plpgsql';
+
+
+CREATE TABLE scan (
+       id SERIAL,
+       filename TEXT,
+       preview TEXT,
+       entered TIMESTAMP,
+       updated TIMESTAMP,
+       title TEXT,
+       description TEXT
+);
+
+CREATE UNIQUE INDEX scan_filename_idx on scan(filename);
+
+CREATE TRIGGER scan_entered BEFORE INSERT ON scan 
+  FOR EACH ROW EXECUTE PROCEDURE entered_stamp();
+CREATE TRIGGER scan_updated BEFORE UPDATE ON scan
+  FOR EACH ROW EXECUTE PROCEDURE updated_stamp();
+
+CREATE USER scanning;
+GRANT INSERT,UPDATE,SELECT ON TABLE scan TO scanning;
+GRANT UPDATE,SELECT ON SEQUENCE scan_id_seq TO scanning;
+ALTER USER scanning WITH PASSWORD 'gahmi8GaesheiBei';
+
+CREATE INDEX scan_title_idx ON scan USING gin(to_tsvector('english', title));
+CREATE INDEX scan_description_idx ON scan USING gin(to_tsvector('english', description));
